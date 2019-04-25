@@ -4,3 +4,6 @@
 .idea/vcs.xml
 .idea/workspace.xml
 Nottingham_Final_Project.iml
+.idea/.name
+src/main/resources
+target/
