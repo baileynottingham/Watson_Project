@@ -7,6 +7,8 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.similarities.BooleanSimilarity;
+import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
@@ -24,7 +26,7 @@ public class Index {
 
         // Create Lucene Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
-        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index";
+        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_boolean";
         Directory index = null;
         try {
             index = FSDirectory.open(Paths.get(indexPath));
@@ -32,6 +34,12 @@ public class Index {
             e.printStackTrace();
         }
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
+        if(args[0].equals("-tfidf")) {
+            config.setSimilarity(new ClassicSimilarity());
+        }
+        if(args[0].equals("-boolean")) {
+            config.setSimilarity(new BooleanSimilarity());
+        }
         IndexWriter w = null;
         try {
             w = new IndexWriter(index, config);

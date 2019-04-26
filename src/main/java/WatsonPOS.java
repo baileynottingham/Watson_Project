@@ -5,13 +5,11 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.similarities.ClassicSimilarity;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.clulab.processors.Processor;
+import org.clulab.processors.corenlp.CoreNLPProcessor;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -20,7 +18,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Scanner;
 
-public class Watson {
+public class WatsonPOS {
 
     public static void main(String args[]) {
         // Parse Questions
@@ -45,7 +43,7 @@ public class Watson {
         // Fetch the Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
         int hitsPerPage = 1;
-        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_tfidf";
+        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index";
         Directory index = null;
         try {
             index = FSDirectory.open(Paths.get(indexPath));
@@ -59,9 +57,7 @@ public class Watson {
             e.printStackTrace();
         }
         IndexSearcher searcher = new IndexSearcher(reader);
-        if(args[0].equals("-tfidf")) {
-            searcher.setSimilarity(new ClassicSimilarity());
-        }
+
         for(Question question : questions) {
             edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(question.getQuestion());
             String resultDataForDocument = "";
@@ -71,12 +67,20 @@ public class Watson {
                 }
             }
             Query query = null;
+            Query phraseQuery;
             TopDocs doc = null;
+            TopDocs phraseDocs = null;
             ScoreDoc[] hits = null;
+            ScoreDoc[] hitsPhrase = null;
             try {
+ //               Processor proc = new CoreNLPProcessor(true, false, 0, 100);
+//                proc.annotateFromTokens()
                 query = new QueryParser("data", analyzer).parse(resultDataForDocument);
+                phraseQuery = new QueryParser("data",analyzer).parse("\"Island country\"~0 AND \"establish in 1912\"~0" );
                 doc = searcher.search(query, hitsPerPage);
+                phraseDocs = searcher.search(phraseQuery, 50);
                 hits = doc.scoreDocs;
+                hitsPhrase = phraseDocs.scoreDocs;
             } catch (ParseException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -96,6 +100,20 @@ public class Watson {
                 System.out.println("Correct:");
                 System.out.println("    Question: " + question.getQuestion());
                 System.out.println("    Answer: " + d.get("title"));
+
+
+                System.out.println(d.get("data"));
+                System.out.print("  Phrase Docs: ");
+                for(int i = 0; i < hitsPhrase.length; i++) {
+                    Document dPhrase;
+                    try {
+                        dPhrase = searcher.doc(hitsPhrase[i].doc);
+                        System.out.print(dPhrase.get("title") + " , ");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                System.out.println();
             }
             else {
                 // Incorrect Answer!

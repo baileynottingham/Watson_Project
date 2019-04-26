@@ -30,6 +30,6 @@ public class DocumentType {
 
     public void removeUnecessaryCharacters() {
         this.data = data.replaceAll("\\[tpl\\](.*?)\\[\\/tpl]", "");
-        this.data = data.replaceAll("==", "");
+        this.data = data.replaceAll("(==*?)", "");
     }
 }

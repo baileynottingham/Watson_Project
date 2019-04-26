@@ -35,6 +35,31 @@
             <artifactId>lucene-analyzers-common</artifactId>
             <version>7.7.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.clulab</groupId>
+            <artifactId>processors-corenlp_2.11</artifactId>
+            <version>7.4.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.clulab</groupId>
+            <artifactId>processors-main_2.11</artifactId>
+            <version>7.4.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.clulab</groupId>
+            <artifactId>processors-odin_2.11</artifactId>
+            <version>7.4.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.clulab</groupId>
+            <artifactId>processors-modelsmain_2.11</artifactId>
+            <version>7.4.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.clulab</groupId>
+            <artifactId>processors-modelscorenlp_2.11</artifactId>
+            <version>7.4.2</version>
+        </dependency>
     </dependencies>
 
     <properties>
