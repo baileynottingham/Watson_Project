@@ -22,11 +22,11 @@ import java.util.Scanner;
 public class Index {
 
     public static void main(String args[]) {
-        File wikiDirectory = new File("/Users/baileynottingham/Nottingham_Final_Project/src/main/resources/wiki-subset-20140602");
+        File wikiDirectory = new File(args[0]);
 
         // Create Lucene Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
-        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_nolemma";
+        String indexPath = args[1];
         Directory index = null;
         try {
             index = FSDirectory.open(Paths.get(indexPath));
@@ -63,7 +63,7 @@ public class Index {
                             // Write previous to index
                             currentDocument.removeUnecessaryCharacters();
                             String resultDataForDocument = "";
-                            if(args.length == 2 && args[1].equals("-lemma")) {
+                            if(args.length == 4 && args[3].equals("-lemma")) {
                                 edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(currentDocument.getData());
                                 for (Sentence sent : coreNLPDoc.sentences()) {
                                     for (String str : sent.lemmas()) {
