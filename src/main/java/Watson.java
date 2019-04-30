@@ -9,6 +9,8 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.BooleanSimilarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -16,6 +18,7 @@ import org.apache.lucene.store.FSDirectory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -45,7 +48,7 @@ public class Watson {
         // Fetch the Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
         int hitsPerPage = 1;
-        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_tfidf";
+        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index";
         Directory index = null;
         try {
             index = FSDirectory.open(Paths.get(indexPath));
@@ -59,16 +62,30 @@ public class Watson {
             e.printStackTrace();
         }
         IndexSearcher searcher = new IndexSearcher(reader);
-        if(args[0].equals("-tfidf")) {
+        if(args.length > 0 && args[0].equals("-tfidf")) {
             searcher.setSimilarity(new ClassicSimilarity());
         }
+        if(args.length > 0 && args[0].equals("-boolean")) {
+            searcher.setSimilarity(new BooleanSimilarity());
+        }
+        if(args.length > 0 && args[0].equals("-BM25")) {
+            // Tweak Paramaters
+            float k1 = 0.1f;
+            float b = 0.75f;
+            searcher.setSimilarity(new BM25Similarity(k1, b));
+        }
         for(Question question : questions) {
-            edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(question.getQuestion());
             String resultDataForDocument = "";
-            for (Sentence sent : coreNLPDoc.sentences()) {
-                for (String str : sent.lemmas()) {
-                    resultDataForDocument += str + " ";
+            if(args.length == 2 && args[1].equals("-lemma")) {
+                edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(question.getQuestion());
+                for (Sentence sent : coreNLPDoc.sentences()) {
+                    for (String str : sent.lemmas()) {
+                        resultDataForDocument += str + " ";
+                    }
                 }
+            }
+            else {
+                resultDataForDocument = question.getQuestion();
             }
             Query query = null;
             TopDocs doc = null;
@@ -82,27 +99,44 @@ public class Watson {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            int docId = hits[0].doc;
-            Document d = null;
-            try {
-                d = searcher.doc(docId);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            if(question.getAnswer().equals(d.get("title"))) {
-                // Correct Answer!
-                correctlyAnswered.add(question);
-                System.out.println("Correct:");
-                System.out.println("    Question: " + question.getQuestion());
-                System.out.println("    Answer: " + d.get("title"));
+            if(hits.length > 0) {
+                int docId = hits[0].doc;
+                Document d = null;
+                try {
+                    d = searcher.doc(docId);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                boolean correct = false;
+                if (question.getAnswer().contains("|")) {
+                    String[] answers = question.getAnswer().split("\\|");
+                    for (int i = 0; i < answers.length; i++) {
+                        if (answers[i].toLowerCase().equals(d.get("title").toLowerCase())) {
+                            correct = true;
+                        }
+                    }
+                }
+                if (correct || question.getAnswer().toLowerCase().equals(d.get("title").toLowerCase())) {
+                    // Correct Answer!
+                    correctlyAnswered.add(question);
+                    System.out.println("Correct:");
+                    System.out.println("    Question: " + question.getQuestion());
+                    System.out.println("    Answer: " + d.get("title"));
+                } else {
+                    // Incorrect Answer!
+                    incorrectlyAnswered.add(question);
+                    System.out.println("Incorrect:");
+                    System.out.println("    Question: " + question.getQuestion());
+                    System.out.println("    Answer: " + d.get("title"));
+                    System.out.println("    Correct Answer: " + question.getAnswer());
+                }
             }
             else {
                 // Incorrect Answer!
                 incorrectlyAnswered.add(question);
                 System.out.println("Incorrect:");
                 System.out.println("    Question: " + question.getQuestion());
-                System.out.println("    Answer: " + d.get("title"));
+                System.out.println("    Answer: NO ANSWER!");
                 System.out.println("    Correct Answer: " + question.getAnswer());
             }
         }

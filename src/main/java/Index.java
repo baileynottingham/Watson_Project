@@ -26,7 +26,7 @@ public class Index {
 
         // Create Lucene Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
-        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_boolean";
+        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_nolemma";
         Directory index = null;
         try {
             index = FSDirectory.open(Paths.get(indexPath));
@@ -62,12 +62,17 @@ public class Index {
                         } else {
                             // Write previous to index
                             currentDocument.removeUnecessaryCharacters();
-                            edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(currentDocument.getData());
                             String resultDataForDocument = "";
-                            for (Sentence sent : coreNLPDoc.sentences()) {
-                                for (String str : sent.lemmas()) {
-                                    resultDataForDocument += str + " ";
+                            if(args.length == 2 && args[1].equals("-lemma")) {
+                                edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(currentDocument.getData());
+                                for (Sentence sent : coreNLPDoc.sentences()) {
+                                    for (String str : sent.lemmas()) {
+                                        resultDataForDocument += str + " ";
+                                    }
                                 }
+                            }
+                            else {
+                                resultDataForDocument = currentDocument.getData();
                             }
                             addDoc(w, currentDocument.getTitle(), resultDataForDocument);
                             System.out.println(counter + ": Added Doc: " + currentDocument.getTitle());
