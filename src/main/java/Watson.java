@@ -1,8 +1,12 @@
 import edu.stanford.nlp.simple.Sentence;
+import opennlp.tools.chunker.ChunkerME;
+import opennlp.tools.chunker.ChunkerModel;
+import opennlp.tools.util.InvalidFormatException;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
@@ -15,12 +19,11 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Scanner;
 
 public class Watson {
@@ -62,13 +65,13 @@ public class Watson {
             e.printStackTrace();
         }
         IndexSearcher searcher = new IndexSearcher(reader);
-        if(args.length > 0 && args[0].equals("-tfidf")) {
+        if(args.length == 5 && args[2].equals("-tfidf")) {
             searcher.setSimilarity(new ClassicSimilarity());
         }
-        if(args.length > 0 && args[0].equals("-boolean")) {
+        if(args.length == 5 && args[2].equals("-boolean")) {
             searcher.setSimilarity(new BooleanSimilarity());
         }
-        if(args.length > 0 && args[0].equals("-BM25")) {
+        if(args.length == 5 && args[2].equals("-BM25")) {
             // Tweak Paramaters
             float k1 = 0.1f;
             float b = 0.75f;
@@ -76,7 +79,7 @@ public class Watson {
         }
         for(Question question : questions) {
             String resultDataForDocument = "";
-            if(args.length == 2 && args[1].equals("-lemma")) {
+            if(args.length == 5 && args[3].equals("-lemma")) {
                 edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(question.getQuestion());
                 for (Sentence sent : coreNLPDoc.sentences()) {
                     for (String str : sent.lemmas()) {
@@ -86,6 +89,37 @@ public class Watson {
             }
             else {
                 resultDataForDocument = question.getQuestion();
+            }
+            // If positonal index, compute noun phrases in question
+            if(args.length == 5 && args[4].equals("-pos")) {
+                InputStream modelIn = null;
+                ChunkerModel model = null;
+
+                try {
+                    modelIn = new FileInputStream("en-chunker.bin");
+                    model = new ChunkerModel(modelIn);
+                } catch (InvalidFormatException e) {
+                    e.printStackTrace();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                ChunkerME chunker = new ChunkerME(model);
+
+                String sent[] = new String[] { "Rockwell", "International", "Corp.", "'s",
+                        "Tulsa", "unit", "said", "it", "signed", "a", "tentative", "agreement",
+                        "extending", "its", "contract", "with", "Boeing", "Co.", "to",
+                        "provide", "structural", "parts", "for", "Boeing", "'s", "747",
+                        "jetliners", "." };
+
+                String pos[] = new String[] { "NNP", "NNP", "NNP", "POS", "NNP", "NN",
+                        "VBD", "PRP", "VBD", "DT", "JJ", "NN", "VBG", "PRP$", "NN", "IN",
+                        "NNP", "NNP", "TO", "VB", "JJ", "NNS", "IN", "NNP", "POS", "CD", "NNS",
+                        "." };
+
+                String tag[] = chunker.chunk(sent, pos);
+                System.out.println();
             }
             Query query = null;
             TopDocs doc = null;

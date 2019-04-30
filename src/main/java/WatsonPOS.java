@@ -3,13 +3,12 @@ import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.clulab.processors.Processor;
-import org.clulab.processors.corenlp.CoreNLPProcessor;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -77,6 +76,24 @@ public class WatsonPOS {
 //                proc.annotateFromTokens()
                 query = new QueryParser("data", analyzer).parse(resultDataForDocument);
                 phraseQuery = new QueryParser("data",analyzer).parse("\"Island country\"~0 AND \"establish in 1912\"~0" );
+                PhraseQuery.Builder builder1 = new PhraseQuery.Builder();
+                builder1.add(new Term("data", "Island"));
+                builder1.add(new Term("data", "country"));
+
+                PhraseQuery.Builder builder2 = new PhraseQuery.Builder();
+                builder2.add(new Term("data", "establish"));
+                builder2.add(new Term("data", "in"));
+                builder2.add(new Term("data", "1912"));
+
+                PhraseQuery p1 = builder1.build();
+                PhraseQuery p2 = builder2.build();
+
+                BooleanQuery.Builder builder3 = new BooleanQuery.Builder();
+                builder3.add(p1, BooleanClause.Occur.MUST);
+                builder3.add(p2, BooleanClause.Occur.MUST);
+
+                BooleanQuery bq = builder3.build();
+
                 doc = searcher.search(query, hitsPerPage);
                 phraseDocs = searcher.search(phraseQuery, 50);
                 hits = doc.scoreDocs;
