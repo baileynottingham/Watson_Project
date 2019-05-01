@@ -1,6 +1,5 @@
 import edu.stanford.nlp.simple.Sentence;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -16,7 +15,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Index {
@@ -34,10 +32,10 @@ public class Index {
             e.printStackTrace();
         }
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
-        if(args[0].equals("-tfidf")) {
+        if (args[0].equals("-tfidf")) {
             config.setSimilarity(new ClassicSimilarity());
         }
-        if(args[0].equals("-boolean")) {
+        if (args[0].equals("-boolean")) {
             config.setSimilarity(new BooleanSimilarity());
         }
         IndexWriter w = null;
@@ -47,7 +45,7 @@ public class Index {
             e.printStackTrace();
         }
         int counter = 1;
-        for(int i = 0; i < wikiDirectory.listFiles().length; i++) {
+        for (int i = 0; i < wikiDirectory.listFiles().length; i++) {
             File file = wikiDirectory.listFiles()[i];
             try {
                 DocumentType currentDocument = null;
@@ -63,15 +61,14 @@ public class Index {
                             // Write previous to index
                             currentDocument.removeUnecessaryCharacters();
                             String resultDataForDocument = "";
-                            if(args.length == 4 && args[3].equals("-lemma")) {
+                            if (args.length == 4 && args[3].equals("-lemma")) {
                                 edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(currentDocument.getData());
                                 for (Sentence sent : coreNLPDoc.sentences()) {
                                     for (String str : sent.lemmas()) {
                                         resultDataForDocument += str + " ";
                                     }
                                 }
-                            }
-                            else {
+                            } else {
                                 resultDataForDocument = currentDocument.getData();
                             }
                             addDoc(w, currentDocument.getTitle(), resultDataForDocument);
@@ -82,12 +79,12 @@ public class Index {
                         }
                     } else {
                         // Not a title name
-                        if(currentDocument != null) {
+                        if (currentDocument != null) {
                             currentDocument.concatData(currentLine);
                         }
                     }
                 }
-                if(currentDocument != null) {
+                if (currentDocument != null) {
                     currentDocument.removeUnecessaryCharacters();
                     edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(currentDocument.getData());
                     String resultDataForDocument = "";

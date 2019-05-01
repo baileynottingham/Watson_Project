@@ -49,8 +49,7 @@
 
     <profiles>
         <profile>
-            <!-- Name your profile here -->
-            <id>index</id>
+            <id>Index</id>
             <build>
                 <plugins>
                     <plugin>
@@ -65,12 +64,41 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <!-- TODO: if your main class is called something else, change it here -->
                             <mainClass>Index</mainClass>
-                            <!-- TODO: if your class takes command line arguments, change them here -->
                             <arguments>
-                                <argument>foo</argument>
-                                <argument>bar</argument>
+                                <argument>/Users/baileynottingham/Nottingham_Final_Project/src/main/resources/wiki-subset-20140602</argument>
+                                <argument>/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index_test</argument>
+                                <argument>-BM25</argument>
+                                <argument>-lemma</argument>
+                            </arguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>Watson</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.2.1</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>java</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <mainClass>Watson</mainClass>
+                            <arguments>
+                                <argument>/Users/baileynottingham/Nottingham_Final_Project/src/main/resources/questions.txt</argument>
+                                <argument>/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index</argument>
+                                <argument>-BM25</argument>
+                                <argument>-lemma</argument>
+                                <argument>-pos</argument>
                             </arguments>
                         </configuration>
                     </plugin>

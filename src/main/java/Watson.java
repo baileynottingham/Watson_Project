@@ -1,18 +1,17 @@
 import edu.stanford.nlp.simple.Sentence;
 import opennlp.tools.chunker.ChunkerME;
 import opennlp.tools.chunker.ChunkerModel;
+import opennlp.tools.postag.POSModel;
+import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.util.InvalidFormatException;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.BooleanSimilarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -20,21 +19,19 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import java.io.*;
-import java.lang.reflect.Array;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Scanner;
 
 public class Watson {
 
     public static void main(String args[]) {
         // Parse Questions
-        File questionFile = new File("/Users/baileynottingham/Nottingham_Final_Project/src/main/resources/questions.txt");
+        File questionFile = new File(args[0]);
         ArrayList<Question> questions = new ArrayList<>();
         try {
             Scanner scanner = new Scanner(questionFile);
-            while(scanner.hasNextLine()) {
+            while (scanner.hasNextLine()) {
                 String category = scanner.nextLine();
                 String question = scanner.nextLine();
                 String answer = scanner.nextLine();
@@ -51,7 +48,7 @@ public class Watson {
         // Fetch the Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
         int hitsPerPage = 1;
-        String indexPath = "/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index";
+        String indexPath = args[1];
         Directory index = null;
         try {
             index = FSDirectory.open(Paths.get(indexPath));
@@ -65,39 +62,44 @@ public class Watson {
             e.printStackTrace();
         }
         IndexSearcher searcher = new IndexSearcher(reader);
-        if(args.length == 5 && args[2].equals("-tfidf")) {
+        if (args.length == 5 && args[2].equals("-tfidf")) {
             searcher.setSimilarity(new ClassicSimilarity());
         }
-        if(args.length == 5 && args[2].equals("-boolean")) {
+        if (args.length == 5 && args[2].equals("-boolean")) {
             searcher.setSimilarity(new BooleanSimilarity());
         }
-        if(args.length == 5 && args[2].equals("-BM25")) {
+        if (args.length == 5 && args[2].equals("-BM25")) {
             // Tweak Paramaters
             float k1 = 0.1f;
             float b = 0.75f;
             searcher.setSimilarity(new BM25Similarity(k1, b));
         }
-        for(Question question : questions) {
+        for (Question question : questions) {
             String resultDataForDocument = "";
-            if(args.length == 5 && args[3].equals("-lemma")) {
+            if (args.length == 5 && args[3].equals("-lemma")) {
                 edu.stanford.nlp.simple.Document coreNLPDoc = new edu.stanford.nlp.simple.Document(question.getQuestion());
                 for (Sentence sent : coreNLPDoc.sentences()) {
                     for (String str : sent.lemmas()) {
                         resultDataForDocument += str + " ";
                     }
                 }
-            }
-            else {
+            } else {
                 resultDataForDocument = question.getQuestion();
             }
             // If positonal index, compute noun phrases in question
-            if(args.length == 5 && args[4].equals("-pos")) {
+            ArrayList<ArrayList<String>> nounPhrases = null;
+            BooleanQuery phraseQuery = null;
+            if (args.length == 5 && args[4].equals("-pos")) {
                 InputStream modelIn = null;
                 ChunkerModel model = null;
+                InputStream modelInPOS = null;
+                POSModel modelPOS = null;
 
                 try {
                     modelIn = new FileInputStream("en-chunker.bin");
+                    modelInPOS = new FileInputStream("en-pos-maxent.bin");
                     model = new ChunkerModel(modelIn);
+                    modelPOS = new POSModel(modelInPOS);
                 } catch (InvalidFormatException e) {
                     e.printStackTrace();
                 } catch (FileNotFoundException e) {
@@ -106,34 +108,86 @@ public class Watson {
                     e.printStackTrace();
                 }
                 ChunkerME chunker = new ChunkerME(model);
+                POSTaggerME tagger = new POSTaggerME(modelPOS);
 
-                String sent[] = new String[] { "Rockwell", "International", "Corp.", "'s",
-                        "Tulsa", "unit", "said", "it", "signed", "a", "tentative", "agreement",
-                        "extending", "its", "contract", "with", "Boeing", "Co.", "to",
-                        "provide", "structural", "parts", "for", "Boeing", "'s", "747",
-                        "jetliners", "." };
+                Scanner scannerString = new Scanner(resultDataForDocument);
+                ArrayList<String> queryList = new ArrayList<>();
+                while (scannerString.hasNext()) {
+                    queryList.add(scannerString.next());
+                }
 
-                String pos[] = new String[] { "NNP", "NNP", "NNP", "POS", "NNP", "NN",
-                        "VBD", "PRP", "VBD", "DT", "JJ", "NN", "VBG", "PRP$", "NN", "IN",
-                        "NNP", "NNP", "TO", "VB", "JJ", "NNS", "IN", "NNP", "POS", "CD", "NNS",
-                        "." };
 
-                String tag[] = chunker.chunk(sent, pos);
-                System.out.println();
+                String queryArray[] = new String[queryList.size()];
+                for (int i = 0; i < queryList.size(); i++) {
+                    queryArray[i] = queryList.get(i);
+                }
+
+                String tags[] = tagger.tag(queryArray);
+
+                String tag[] = chunker.chunk(queryArray, tags);
+
+                nounPhrases = computeNounPhrases(queryArray, tag);
+                if (nounPhrases != null) {
+                    ArrayList<PhraseQuery> phraseQueries = new ArrayList<>();
+                    for (ArrayList<String> nouns : nounPhrases) {
+                        if (nouns.size() > 1) {
+                            PhraseQuery.Builder phraseBuilder = new PhraseQuery.Builder();
+                            phraseBuilder.setSlop(20);
+                            for (String str : nouns) {
+                                phraseBuilder.add(new Term("data", str));
+                            }
+                            phraseQueries.add(phraseBuilder.build());
+                        }
+                    }
+                    BooleanQuery.Builder booleanBuilder = new BooleanQuery.Builder();
+                    for (PhraseQuery phrase : phraseQueries) {
+                        booleanBuilder.add(phrase, BooleanClause.Occur.SHOULD);
+                    }
+                    try {
+                        Query query = null;
+                        if((args.length == 5 && args[3].equals("-nolemma"))) {
+                            query = new QueryParser("data", analyzer).parse(QueryParser.escape(resultDataForDocument));
+                        }
+                        else {
+                            query = new QueryParser("data", analyzer).parse(resultDataForDocument);
+                        }
+                        Query category = new QueryParser("data", analyzer).parse(QueryParser.escape(question.getCategory()));
+                        booleanBuilder.add(query, BooleanClause.Occur.MUST);
+                        booleanBuilder.add(category, BooleanClause.Occur.SHOULD);
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    phraseQuery = booleanBuilder.build();
+                }
             }
+            BooleanQuery queryWithCategory = null;
             Query query = null;
             TopDocs doc = null;
             ScoreDoc[] hits = null;
             try {
-                query = new QueryParser("data", analyzer).parse(resultDataForDocument);
-                doc = searcher.search(query, hitsPerPage);
+                BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
+                if((args.length == 5 && args[3].equals("-nolemma"))) {
+                    query = new QueryParser("data", analyzer).parse(QueryParser.escape(resultDataForDocument));
+                }
+                else {
+                    query = new QueryParser("data", analyzer).parse(resultDataForDocument);
+                }
+                Query category = new QueryParser("data", analyzer).parse(QueryParser.escape(question.getCategory()));
+                booleanQuery.add(query, BooleanClause.Occur.MUST);
+                booleanQuery.add(category, BooleanClause.Occur.SHOULD);
+                queryWithCategory = booleanQuery.build();
+                if (args.length == 5 && args[4].equals("-pos") && phraseQuery != null) {
+                    doc = searcher.search(phraseQuery, hitsPerPage);
+                } else {
+                    doc = searcher.search(queryWithCategory, hitsPerPage);
+                }
                 hits = doc.scoreDocs;
             } catch (ParseException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            if(hits.length > 0) {
+            if (hits.length > 0) {
                 int docId = hits[0].doc;
                 Document d = null;
                 try {
@@ -164,8 +218,7 @@ public class Watson {
                     System.out.println("    Answer: " + d.get("title"));
                     System.out.println("    Correct Answer: " + question.getAnswer());
                 }
-            }
-            else {
+            } else {
                 // Incorrect Answer!
                 incorrectlyAnswered.add(question);
                 System.out.println("Incorrect:");
@@ -178,5 +231,32 @@ public class Watson {
         System.out.println("Results:");
         System.out.println("   Correct: " + correctlyAnswered.size());
         System.out.println("   Incorrect: " + incorrectlyAnswered.size());
+    }
+
+    private static ArrayList<ArrayList<String>> computeNounPhrases(String[] test, String[] tag) {
+        ArrayList<ArrayList<String>> result = new ArrayList<>();
+        ArrayList<String> currentNounPhrase = null;
+        int i = 0;
+        for (String str : tag) {
+            if (str.equals("B-NP")) {
+                if (currentNounPhrase == null) {
+                    currentNounPhrase = new ArrayList<>();
+                    currentNounPhrase.add(test[i]);
+                } else {
+                    // Add previous as a phrase
+                    result.add(currentNounPhrase);
+                    currentNounPhrase = new ArrayList<>();
+                    currentNounPhrase.add(test[i]);
+                }
+            }
+            if (str.equals("I-NP")) {
+                currentNounPhrase.add(test[i]);
+            }
+            i++;
+        }
+        if (currentNounPhrase != null && currentNounPhrase.size() > 0) {
+            result.add(currentNounPhrase);
+        }
+        return result;
     }
 }
