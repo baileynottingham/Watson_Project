@@ -1,3 +1,7 @@
+/*
+ Bailey Nottingham
+ */
+
 public class Question {
 
     private String category;

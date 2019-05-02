@@ -94,11 +94,11 @@
                         <configuration>
                             <mainClass>Watson</mainClass>
                             <arguments>
-                                <argument>/Users/baileynottingham/Nottingham_Final_Project/src/main/resources/questions.txt</argument>
+                                <argument>/Users/baileynottingham/Nottingham_Final_Project/questions.txt</argument>
                                 <argument>/Volumes/Samsung_T5/Watson_Project_Indexes/lemma_index</argument>
                                 <argument>-BM25</argument>
                                 <argument>-lemma</argument>
-                                <argument>-pos</argument>
+                                <argument>-nopos</argument>
                             </arguments>
                         </configuration>
                     </plugin>

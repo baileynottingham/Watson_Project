@@ -1,3 +1,7 @@
+/*
+ Bailey Nottingham
+ */
+
 public class DocumentType {
     String title = "";
     String data = " ";

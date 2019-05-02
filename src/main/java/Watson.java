@@ -23,6 +23,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Scanner;
 
+/*
+ Bailey Nottingham
+ */
+
 public class Watson {
 
     public static void main(String args[]) {
@@ -45,9 +49,12 @@ public class Watson {
         ArrayList<Question> correctlyAnswered = new ArrayList<>();
         ArrayList<Question> incorrectlyAnswered = new ArrayList<>();
 
+        // MRR Evaluation
+        ArrayList<Double> rank = new ArrayList<>();
+
         // Fetch the Index
         WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
-        int hitsPerPage = 1;
+        int hitsPerPage = 50;
         String indexPath = args[1];
         Directory index = null;
         try {
@@ -90,6 +97,7 @@ public class Watson {
             ArrayList<ArrayList<String>> nounPhrases = null;
             BooleanQuery phraseQuery = null;
             if (args.length == 5 && args[4].equals("-pos")) {
+                // ---------- Adding Noun Phrases into Original Query -------------- (GRAD PORTION)
                 InputStream modelIn = null;
                 ChunkerModel model = null;
                 InputStream modelInPOS = null;
@@ -145,10 +153,9 @@ public class Watson {
                     }
                     try {
                         Query query = null;
-                        if((args.length == 5 && args[3].equals("-nolemma"))) {
+                        if ((args.length == 5 && args[3].equals("-nolemma"))) {
                             query = new QueryParser("data", analyzer).parse(QueryParser.escape(resultDataForDocument));
-                        }
-                        else {
+                        } else {
                             query = new QueryParser("data", analyzer).parse(resultDataForDocument);
                         }
                         Query category = new QueryParser("data", analyzer).parse(QueryParser.escape(question.getCategory()));
@@ -159,6 +166,7 @@ public class Watson {
                     }
                     phraseQuery = booleanBuilder.build();
                 }
+                // -------- Finished Adding Noun Phrases ---------------
             }
             BooleanQuery queryWithCategory = null;
             Query query = null;
@@ -166,10 +174,9 @@ public class Watson {
             ScoreDoc[] hits = null;
             try {
                 BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
-                if((args.length == 5 && args[3].equals("-nolemma"))) {
+                if ((args.length == 5 && args[3].equals("-nolemma"))) {
                     query = new QueryParser("data", analyzer).parse(QueryParser.escape(resultDataForDocument));
-                }
-                else {
+                } else {
                     query = new QueryParser("data", analyzer).parse(resultDataForDocument);
                 }
                 Query category = new QueryParser("data", analyzer).parse(QueryParser.escape(question.getCategory()));
@@ -210,6 +217,9 @@ public class Watson {
                     System.out.println("Correct:");
                     System.out.println("    Question: " + question.getQuestion());
                     System.out.println("    Answer: " + d.get("title"));
+                    // Add the Rank, was in correct position
+                    rank.add(1.0);
+
                 } else {
                     // Incorrect Answer!
                     incorrectlyAnswered.add(question);
@@ -217,6 +227,37 @@ public class Watson {
                     System.out.println("    Question: " + question.getQuestion());
                     System.out.println("    Answer: " + d.get("title"));
                     System.out.println("    Correct Answer: " + question.getAnswer());
+                    // Add the Rank, was in incorrect position. Search and find Rank
+                    double rankPos = -1;
+                    for (int i = 0; i < hits.length; i++) {
+                        int tempDocID = hits[i].doc;
+                        Document dTemp = null;
+                        try {
+                            dTemp = searcher.doc(tempDocID);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        if (question.getAnswer().contains("|")) {
+                            String[] answers = question.getAnswer().split("\\|");
+                            for (int j = 0; j < answers.length; j++) {
+                                if (answers[j].toLowerCase().equals(dTemp.get("title").toLowerCase())) {
+                                    rankPos = i + 1;
+                                    break;
+                                }
+                            }
+                        } else {
+                            if (question.getAnswer().toLowerCase().equals(dTemp.get("title").toLowerCase())) {
+                                rankPos = i + 1;
+                                break;
+                            }
+                        }
+
+                    }
+                    if (rankPos != -1) {
+                        rank.add(rankPos);
+                    } else {
+                        rank.add((0.0));
+                    }
                 }
             } else {
                 // Incorrect Answer!
@@ -225,12 +266,26 @@ public class Watson {
                 System.out.println("    Question: " + question.getQuestion());
                 System.out.println("    Answer: NO ANSWER!");
                 System.out.println("    Correct Answer: " + question.getAnswer());
+                // Add the Rank. Not present. Rank is 0.
+                rank.add(0.0);
+
             }
         }
 
         System.out.println("Results:");
         System.out.println("   Correct: " + correctlyAnswered.size());
         System.out.println("   Incorrect: " + incorrectlyAnswered.size());
+
+        // Compute MRR
+        double total = 0;
+        for (Double num : rank) {
+            if (num > 0) {
+                total += (1.0 / num);
+            }
+        }
+        total = (total / 100);
+
+        System.out.println("   MRR Performance: " + (total * 100) + "%");
     }
 
     private static ArrayList<ArrayList<String>> computeNounPhrases(String[] test, String[] tag) {
